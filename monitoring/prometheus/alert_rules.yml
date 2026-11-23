@@ -1,0 +1,29 @@
+groups:
+  - name: sentiment_service_alerts
+    rules:
+      - alert: HighInferenceLatencyP95
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{handler="/predict"}[5m])) by (le)) > 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Latenza p95 elevata sull'endpoint /predict"
+          description: "Il 95° percentile del tempo di inferenza supera 500ms negli ultimi 5 minuti."
+
+      - alert: LowModelConfidenceDriftSignal
+        expr: (sum(rate(sentiment_prediction_confidence_sum[15m])) / sum(rate(sentiment_prediction_confidence_count[15m]))) < 0.65
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Possibile Data/Concept Drift: calo confidenza media"
+          description: "Lo score medio di confidenza del modello è sceso sotto 0.65 negli ultimi 15 minuti."
+
+      - alert: HighPredictionErrorRate
+        expr: sum(rate(http_requests_total{handler="/predict",status=~"5.."}[5m])) > 0.05
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Errori HTTP 5xx rilevati sul servizio di inferenza"
+          description: "Il tasso di errori server su /predict supera la soglia di tolleranza."
